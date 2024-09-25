@@ -87,7 +87,9 @@ void handleClient(int comfd, ADDRESS clientAddr) {
                     std::lock_guard<std::mutex> lock(coutMutex);
                     std::cout << "Get list of connected clients" << std::endl;
                     std::cout << "Number of clients: " << len << std::endl;
-                    std::cout << data << std::endl;
+                    for(auto &client: clients) {
+                        std::cout << "Client: " << client.clientAddr.ip << ": " << client.clientAddr.port << ", comfd = " << client.comfd << std::endl;
+                    }
                 }
                 MSG *response = create_message(MSG_TYPE_GET_LIST, _size, data);
                 send_message(comfd, response);
@@ -102,7 +104,11 @@ void handleClient(int comfd, ADDRESS clientAddr) {
             case REQ_TYPE_SEND_MSG: {
                 uint32_t _toComfd;
                 memcpy(&_toComfd, msg->data, COMFD_SIZE);
-                _toComfd = ntohl(_toComfd);
+                
+                {
+                    std::lock_guard<std::mutex> lock(coutMutex);
+                    std::cout << "Send message to " << _toComfd << "  : "  << msg->data << std::endl;
+                }
                 std::lock_guard<std::mutex> lock(clientMutex);
                 bool _isSended = false;
                 for(auto &client: clients) {
@@ -110,7 +116,8 @@ void handleClient(int comfd, ADDRESS clientAddr) {
                         MSG *response = create_message(MSG_TYPE_SEND_MSG, 1, "0");
                         send_message(comfd, response);
                         free(response);
-                        std::string _data = msg->data;
+                        std::string _data = "";
+                        _data.insert(0, msg->data + COMFD_SIZE, msg->size - COMFD_SIZE);
                         _data.insert(0, (char*)&client.clientAddr.port, PORT_SIZE);
                         uint32_t ip = inet_addr(client.clientAddr.ip);
                         _data.insert(0, (char*)&ip, IP_SIZE);
