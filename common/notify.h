@@ -1,7 +1,7 @@
 #ifndef NOTIFY_H
 #define NOTIFY_H
 
-#define USE_GTK
+#define USE_NOTIFY_SEND
 
 #include <string>
 #include <cstdlib>

@@ -186,7 +186,7 @@ int main(int argc, char *argv[]) {
                 continue;
             }
             // if connected, send MSG_TYPE_END_CONN to server
-            MSG *msg = create_message(MSG_TYPE_END_CONN);
+            MSG *msg = create_message(REQ_TYPE_END_CONN);
             blocked_send(msg);
             free(msg);
             std::cout << INFO << "sent MSG_TYPE_END_CONN" << std::endl;

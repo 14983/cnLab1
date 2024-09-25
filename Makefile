@@ -16,7 +16,7 @@ common.o: common/common.cpp
 client.o: client/main.cpp common/common.h common/notify.h
 	$(CC) -c client/main.cpp -o client.o $(GTKFLAG) 
 
-server.o: server/main.cpp common/common.h
+server.o: server/main.cpp common/common.h server/server.h
 	$(CC) -c server/main.cpp -o server.o $(GTKFLAG) 
 
 run: client.out server.out

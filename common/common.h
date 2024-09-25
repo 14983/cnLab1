@@ -29,9 +29,11 @@
 #include <queue>
 #include <chrono>
 #include <cassert>
+#include <algorithm>
+#include <csignal>
 
 enum MSG_TYPE: int {
-    MSG_TYPE_END_CONN,
+    REQ_TYPE_END_CONN,
     REQ_TYPE_GET_TIME,
     MSG_TYPE_GET_TIME,
     REQ_TYPE_GET_NAME,
@@ -43,24 +45,79 @@ enum MSG_TYPE: int {
     MSG_TYPE_RECV_MSG
 };
 
+#define COMFD_SIZE 4
+#define IP_SIZE 4
+#define PORT_SIZE 4
+
 struct MSG {
+/*
+    | type | align     | length | data   |
+    | 4B   | 4B(EMPTY) | 8B     | size B |
+
+    size = size of 'data'
+
+type = REQ_TYPE_END_CONN:
+    client => server: request to end connection
+    size = 0
+
+type = REQ_TYPE_GET_TIME:
+    client => server: request to get current time
+    size = 0
+
+type = REQ_TYPE_GET_NAME:
+    client => server: request to get server's name
+    size = 0
+
+type = REQ_TYPE_GET_LIST:
+    client => server: request to get list of connected clients
+    size = 0
+
+type = REQ_TYPE_SEND_MSG:
+    client => server: request to send message to another client
+    | comfd | message      |
+    | 4B    | (size - 4)B  |
+
+type = MSG_TYPE_GET_TIME:
+    server => client: current time
+    size = size of data, data = current time
+
+type = MSG_TYPE_GET_NAME:
+    server => client: server's name
+    size = size of data, data = server's name
+
+type = MSG_TYPE_GET_LIST:
+    server => client: list of connected clients
+    | number of clients | comfd1 | ip1 | port1 | comfd2 | ip2 | port2 | ... |
+    | 4B                | 4B     | 4B  | 4B    | 4B     | 4B  | 4B    | ... |
+
+type = MSG_TYPE_SEND_MSG:
+    server => client: status of sending message
+    size = 2
+    data = '0\0': successful
+           '1\0': failed
+           '2\0': client not found
+
+type = MSG_TYPE_RECV_MSG:
+    server => client: received message from another client
+    | comfd | ip | port | message       |
+    | 4B    | 4B | 4B   | (size - 12)B  |
+*/
     MSG_TYPE type;
     size_t size;
     char data[];
 };
 
 struct ADDRESS {
-    int sockfd;
     char ip[INET_ADDRSTRLEN];
     int port;
     bool operator==(const ADDRESS &other) const {
-        return (strcmp(ip, other.ip) == 0 && port == other.port && sockfd == other.sockfd);
+        return (strcmp(ip, other.ip) == 0 && port == other.port);
     }
-};
-
-class CONN_LIST {
-public:
-private:
+    ADDRESS() {}
+    ADDRESS(const char _ip[], int _port): port(_port) {
+        strncpy(ip, _ip, INET_ADDRSTRLEN - 1);
+        ip[INET_ADDRSTRLEN - 1] = '\0';
+    }
 };
 
 void create_socket(int &sockfd);
