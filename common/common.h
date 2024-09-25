@@ -1,3 +1,6 @@
+#ifndef COMMON_H
+#define COMMON_H
+
 #define SERVER_PORT 4392
 #define USER_SLEEP_TIME 200 // in milliseconds
 #define SYSTEM_SLEEP_TIME 10 // in milliseconds
@@ -6,7 +9,7 @@
 #define INFO "\033[32m[INFO] \033[0m"
 #define WARNING "\033[36m[WARN] \033[0m"
 #define ERROR "\033[31m[ERRO] \033[0m"
-#define COMMUNICATION "\033[33m[COMM] \033[0m"
+#define THREAD "\033[33m[THRE] \033[0m"
 
 #include <iostream>
 #include <stdlib.h>
@@ -67,3 +70,5 @@ int send_message(int sockfd, const MSG *message);
 MSG *create_message(MSG_TYPE type); // the return value should be freed by the caller
 MSG *create_message(MSG_TYPE type, const std::string &data); // the return value should be freed by the caller
 MSG *create_message(MSG_TYPE type, size_t size, const char *data); // the return value should be freed by the caller
+
+#endif

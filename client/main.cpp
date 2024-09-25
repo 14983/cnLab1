@@ -31,15 +31,15 @@ private:
 msgQueue messages;
 
 void blocked_send(const MSG *msg){
-    while (true){
+    for (int i = 0; i < TIMEOUT/USER_SLEEP_TIME; i++){
         int ret = send_message(sockfd, msg);
         if (ret <= 0) {
-            std::cout << WARNING << "Can not send message" << std::endl;
             std::this_thread::sleep_for(std::chrono::milliseconds(USER_SLEEP_TIME));
         } else {
-            break;
+            return;
         }
     }
+    std::cout << ERROR << "blocked_send timeout" << std::endl;
 }
 
 int connect_to_server(int &sockfd, const std::string &address){
@@ -72,6 +72,7 @@ int connect_to_server(int &sockfd, const std::string &address){
 }
 
 int message_handler(void) { // this is called by a new thread
+    std::cout << THREAD << "started message_handler thread" << std::endl;
     MSG *msg = NULL;
     int ret;
     while (message_handler_running) {
@@ -81,15 +82,14 @@ int message_handler(void) { // this is called by a new thread
             continue; // no message available
         }
         messages.push(msg);
-        std::cout << COMMUNICATION << "got message" << std::endl;
     }
-    std::cout << COMMUNICATION << "message thread stopped" << std::endl;
+    std::cout << THREAD << "message_handler thread stopped" << std::endl;
     return 0;
 }
 
 
 void notify_sender(void){
-    std::cout << INFO << "started notify sender thread" << std::endl;
+    std::cout << THREAD << "started notify_sender thread" << std::endl;
     while (notify_sender_running) {
         if (messages.empty()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(USER_SLEEP_TIME));
@@ -97,34 +97,54 @@ void notify_sender(void){
         }
         MSG *msg = messages.pop(); // block until a message is available
         assert(msg != NULL);
-        switch (msg->type) {
-            case MSG_TYPE_GET_NAME:
-                notify("Get hostname: " + std::string(msg->data));
-                break;
-            case MSG_TYPE_GET_TIME:
-                notify("Get time: " + std::string(msg->data));
-                break;
-            case MSG_TYPE_GET_LIST:
-                std::cout << COMMUNICATION << "Get client list: " << "TODO" << std::endl;
-                break;
-            case MSG_TYPE_SEND_MSG:
-                std::cout << COMMUNICATION << "Received message from client " << "TODO" << std::endl;
-                break;
-            case MSG_TYPE_RECV_MSG:
-                std::cout << COMMUNICATION << "Received message from client: " << inet_ntoa(*(in_addr *)((char *)msg->data+4)) << ":" << *(int *)((char *)msg->data + 8) << ", message: " << (char *)msg->data + 12 << std::endl;
-                break;
-            default:
-                notify("unsupported message type");
-                break;
+        if (msg->type == MSG_TYPE_GET_NAME){
+            notify("Get hostname: " + std::string(msg->data));
+        } else if (msg->type == MSG_TYPE_GET_TIME){
+            notify("Get time: " + std::string(msg->data));
+        } else if (msg->type == MSG_TYPE_GET_LIST){
+            std::string notify_str = "Get client list: ";
+            char *ptr = (char *)msg->data;
+            int count = *(int *)ptr;
+            ptr += sizeof(int);
+            while (count--){
+                int comfd = *(int *)ptr;
+                ptr += sizeof(int);
+                int ip = *(int *)ptr;
+                ptr += sizeof(int);
+                int port = *(int *)ptr;
+                ptr += sizeof(int);
+                notify_str += std::to_string(comfd) + " " + inet_ntoa(*(in_addr *)&ip) + ":" + std::to_string(port) + ", ";
+            }
+            notify(notify_str);
+        } else if (msg->type == MSG_TYPE_SEND_MSG){
+            switch (msg->data[0]) {
+                case '0':
+                    notify("Send message to client successfully");
+                    break;
+                case '1':
+                    notify("Send message to client failed");
+                    break;
+                case '2':
+                    notify("No such client");
+                    break;
+                default:
+                    notify("UNKNOWN ERROR");
+                    break;
+            }
+        } else if (msg->type == MSG_TYPE_RECV_MSG){
+            std::string notify_str = "Received message from client: " + std::string(inet_ntoa(*(in_addr *)((char *)msg->data+4))) + ":" + std::to_string(*(int *)((char *)msg->data + 8)) + ", message: " + std::string((char *)msg->data + 12);
+            notify(notify_str);
+        } else {
+            notify("unsupported message type: " + std::to_string(msg->type));
         }
         free(msg);
     }
+    std::cout << THREAD << "notify_sender thread stopped" << std::endl;
 }
 
 int main(int argc, char *argv[]) {
     // start notify sender thread, continue to work until the program quits
     notify_sender_thread = std::thread(notify_sender);
-    std::cout << INFO << "started message sender thread" << std::endl;
 
     static const std::string usage = "Usage:\n\t1 - Connect to server\n\t2 - Disconnect from server\n\t3 - Get time\n\t4 - Get hostname\n\t5 - Get client list\n\t6 - Send message to client\n\t7 - Quit\n";
     std::string command;
@@ -169,11 +189,11 @@ int main(int argc, char *argv[]) {
             MSG *msg = create_message(MSG_TYPE_END_CONN);
             blocked_send(msg);
             free(msg);
-            std::cout << COMMUNICATION << "sent MSG_TYPE_END_CONN" << std::endl;
+            std::cout << INFO << "sent MSG_TYPE_END_CONN" << std::endl;
             // wait for message handler thread to join
             message_handler_running = false;
             message_handler_thread.join();
-            std::cout << INFO << "joined message thread" << std::endl;
+            std::cout << THREAD << "joined message thread" << std::endl;
             // close socket
             close_socket(sockfd);
             std::cout << INFO << "closed socket" << std::endl;
@@ -192,7 +212,7 @@ int main(int argc, char *argv[]) {
             MSG *msg = create_message(REQ_TYPE_GET_TIME);
             blocked_send(msg);
             free(msg);
-            std::cout << COMMUNICATION << "sent REQ_TYPE_GET_TIME" << std::endl;
+            std::cout << INFO << "sent REQ_TYPE_GET_TIME" << std::endl;
         } else if (command == "4") {
             // check if connected
             if (!message_handler_running) {
@@ -203,7 +223,7 @@ int main(int argc, char *argv[]) {
             MSG *msg = create_message(REQ_TYPE_GET_NAME);
             blocked_send(msg);
             free(msg);
-            std::cout << COMMUNICATION << "sent REQ_TYPE_GET_NAME" << std::endl;
+            std::cout << INFO << "sent REQ_TYPE_GET_NAME" << std::endl;
         } else if (command == "5") {
             // check if connected
             if (!message_handler_running) {
@@ -214,7 +234,7 @@ int main(int argc, char *argv[]) {
             MSG *msg = create_message(REQ_TYPE_GET_LIST);
             blocked_send(msg);
             free(msg);
-            std::cout << COMMUNICATION << "sent REQ_TYPE_GET_LIST" << std::endl;
+            std::cout << INFO << "sent REQ_TYPE_GET_LIST" << std::endl;
         } else if (command == "6") {
             // check if connected
             if (!message_handler_running) {
@@ -225,9 +245,17 @@ int main(int argc, char *argv[]) {
             std::cout << "Enter client ID: ";
             int client_id;
             std::cin >> client_id;
-            std::cout << "Enter message: ";
-            std::string message;
-            std::getline(std::cin, message);
+            std::cout << "Enter message, type `.` to end" << std::endl;
+            std::string message, tmp;
+            std::getline(std::cin, tmp);
+            while (true) {
+                std::cout << "\033[32m> \033[0m";
+                std::getline(std::cin, tmp);
+                if (tmp == ".") {
+                    break;
+                }
+                message += tmp;
+            }
             char *buffer = (char *) malloc(sizeof(client_id) + message.length() + 1);
             memcpy(buffer, &client_id, sizeof(client_id));
             memcpy(buffer + sizeof(client_id), message.c_str(), message.length());
@@ -236,13 +264,13 @@ int main(int argc, char *argv[]) {
             blocked_send(msg);
             free(buffer);
             free(msg);
-            std::cout << COMMUNICATION << "sent REQ_TYPE_SEND_MSG to client " << client_id << std::endl;
+            std::cout << INFO << "sent REQ_TYPE_SEND_MSG to client " << client_id << std::endl;
         }
     }
     // wait for notify_sender thread to join
     notify_sender_running = false;
     notify_sender_thread.join();
-    std::cout << INFO << "joined notify thread" << std::endl;
+    std::cout << THREAD << "joined notify thread" << std::endl;
     // quit
-    std::cout << INFO << "quitting main thread" << std::endl;
+    std::cout << THREAD << "quitting main thread" << std::endl;
 }

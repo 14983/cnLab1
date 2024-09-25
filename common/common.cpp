@@ -14,6 +14,7 @@ void close_socket(int &sockfd) {
 
 MSG *create_message(MSG_TYPE type) { // the return value should be freed by the caller
     MSG *msg = (MSG *)malloc(sizeof(MSG));
+    memset(msg, 0, sizeof(MSG));
     msg->type = type;
     msg->size = 0;
     return msg;
@@ -22,6 +23,7 @@ MSG *create_message(MSG_TYPE type) { // the return value should be freed by the 
 MSG *create_message(MSG_TYPE type, const std::string &data) { // the return value should be freed by the caller
     size_t size = data.size();
     MSG *msg = (MSG *)malloc(sizeof(MSG) + size + 1);
+    memset(msg, 0, sizeof(MSG) + size + 1);
     msg->type = type;
     msg->size = size + 1;
     memcpy(msg->data, data.c_str(), size);
@@ -31,6 +33,7 @@ MSG *create_message(MSG_TYPE type, const std::string &data) { // the return valu
 
 MSG *create_message(MSG_TYPE type, size_t size, const char *data) { // the return value should be freed by the caller
     MSG *msg = (MSG *)malloc(sizeof(MSG) + size);
+    memset(msg, 0, sizeof(MSG) + size);
     msg->type = type;
     msg->size = size;
     memcpy(msg->data, data, size);
