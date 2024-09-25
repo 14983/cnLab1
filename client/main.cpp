@@ -30,16 +30,17 @@ private:
 };
 msgQueue messages;
 
-void blocked_send(const MSG *msg){
+int blocked_send(const MSG *msg){
     for (int i = 0; i < TIMEOUT/USER_SLEEP_TIME; i++){
         int ret = send_message(sockfd, msg);
         if (ret <= 0) {
             std::this_thread::sleep_for(std::chrono::milliseconds(USER_SLEEP_TIME));
         } else {
-            return;
+            return 0;
         }
     }
     std::cout << ERROR << "blocked_send timeout" << std::endl;
+    return -1;
 }
 
 int connect_to_server(int &sockfd, const std::string &address){
@@ -187,8 +188,9 @@ int main(int argc, char *argv[]) {
             }
             // if connected, send MSG_TYPE_END_CONN to server
             MSG *msg = create_message(REQ_TYPE_END_CONN);
-            blocked_send(msg);
+            int ret = blocked_send(msg);
             free(msg);
+            if (ret < 0) continue;
             std::cout << INFO << "sent MSG_TYPE_END_CONN" << std::endl;
             // wait for message handler thread to join
             message_handler_running = false;
@@ -210,8 +212,9 @@ int main(int argc, char *argv[]) {
             }
             // if connected, send REQ_TYPE_GET_TIME to server
             MSG *msg = create_message(REQ_TYPE_GET_TIME);
-            blocked_send(msg);
+            int ret = blocked_send(msg);
             free(msg);
+            if (ret < 0) continue;
             std::cout << INFO << "sent REQ_TYPE_GET_TIME" << std::endl;
         } else if (command == "4") {
             // check if connected
@@ -221,8 +224,9 @@ int main(int argc, char *argv[]) {
             }
             // if connected, send MSG_TYPE_GET_NAME to server
             MSG *msg = create_message(REQ_TYPE_GET_NAME);
-            blocked_send(msg);
+            int ret = blocked_send(msg);
             free(msg);
+            if (ret < 0) continue;
             std::cout << INFO << "sent REQ_TYPE_GET_NAME" << std::endl;
         } else if (command == "5") {
             // check if connected
@@ -232,8 +236,9 @@ int main(int argc, char *argv[]) {
             }
             // if connected, send MSG_TYPE_GET_LIST to server
             MSG *msg = create_message(REQ_TYPE_GET_LIST);
-            blocked_send(msg);
+            int ret = blocked_send(msg);
             free(msg);
+            if (ret < 0) continue;
             std::cout << INFO << "sent REQ_TYPE_GET_LIST" << std::endl;
         } else if (command == "6") {
             // check if connected
@@ -261,9 +266,10 @@ int main(int argc, char *argv[]) {
             memcpy(buffer + sizeof(client_id), message.c_str(), message.length());
             buffer[sizeof(client_id) + message.length()] = '\0';
             MSG *msg = create_message(REQ_TYPE_SEND_MSG, sizeof(client_id) + message.length() + 1, buffer);
-            blocked_send(msg);
+            int ret = blocked_send(msg);
             free(buffer);
             free(msg);
+            if (ret < 0) continue;
             std::cout << INFO << "sent REQ_TYPE_SEND_MSG to client " << client_id << std::endl;
         }
     }
