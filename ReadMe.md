@@ -12,4 +12,7 @@ $ ./client.out
 $ ./server.out
 ```
 
-如果 Client 无法收到信息，请考虑安装 `libnotify-bin`，或者在 `/common/notify.h` 中修改 `notify` 函数的实现。
+如果无法编译，请确保满足以下条件之一：
+
+- 安装了 `libnotify-dev`，且 `./common.h` 中定义 `USE_NOTIFY_SEND`，如果仍然不能编译，请考虑去掉 `Makefile` 中的 `GTKFLAG`
+- 安装了 `libgtk-3-dev`，且 `./common.h` 中定义 `USE_GTK`

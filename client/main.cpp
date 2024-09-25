@@ -132,7 +132,7 @@ void notify_sender(void){
                     break;
             }
         } else if (msg->type == MSG_TYPE_RECV_MSG){
-            std::string notify_str = "Received message from client: " + std::string(inet_ntoa(*(in_addr *)((char *)msg->data+4))) + ":" + std::to_string(*(int *)((char *)msg->data + 8)) + ", message: " + std::string((char *)msg->data + 12);
+            std::string notify_str = "\'" + std::string((char *)msg->data + 12) + "\' from " + std::string(inet_ntoa(*(in_addr *)((char *)msg->data+4))) + ":" + std::to_string(*(int *)((char *)msg->data + 8));
             notify(notify_str);
         } else {
             notify("unsupported message type: " + std::to_string(msg->type));
