@@ -128,5 +128,19 @@ MSG *create_message(MSG_TYPE type); // the return value should be freed by the c
 MSG *create_message(MSG_TYPE type, const std::string &data); // the return value should be freed by the caller
 MSG *create_message(MSG_TYPE type, size_t size, const char *data); // the return value should be freed by the caller
 int blocked_send(int sockfd, const MSG *message);
+int get_sockfd_status(int sockfd){
+    int error;
+    socklen_t len = sizeof(error);
+    if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &error, &len) < 0) {
+        std::cout << ERROR << "Error getting socket options." << std::endl;
+        close(sockfd);
+        return 1;
+    }
+    if (error == 0) {
+        std::cout << "Socket is in good condition." << std::endl;
+    } else {
+        std::cout << "Socket error: " << strerror(error) << std::endl;
+    }
+}
 
 #endif

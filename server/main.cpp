@@ -113,6 +113,7 @@ void handleClient(int comfd, ADDRESS clientAddr) {
                 std::lock_guard<std::mutex> lock(clientMutex);
                 bool _isSended = false;
                 for(auto &client: clients) {
+                    get_sockfd_status(client.comfd);
                     if(client.comfd == _toComfd) {
                         // forward message to client
                         std::string _data = "";
