@@ -16,5 +16,11 @@ $ ./server.out
 
 如果无法编译，请确保满足以下条件之一：
 
+- `./common.h` 中定义了 `USE_COUT`，这种情况下**不会有弹窗提示**，但会输出到控制台。如果仍然不能编译，请考虑去掉 `Makefile` 中的 `GTKFLAG`
 - 安装了 `libnotify-dev`，且 `./common.h` 中定义 `USE_NOTIFY_SEND`，如果仍然不能编译，请考虑去掉 `Makefile` 中的 `GTKFLAG`
 - 安装了 `libgtk-3-dev`，且 `./common.h` 中定义 `USE_GTK`
+
+## 测试选项
+
+- `client/main.cpp` 中有 `TEST_TIME_SENDER` 选项，如果打开，则选项 `3` 会改为发送 100 次请求
+- `common/common.h` 中有各种延时选项，可以设置挂起/超时时间

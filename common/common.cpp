@@ -131,19 +131,3 @@ int blocked_send(int sockfd, const MSG *msg){
     std::cout << ERROR << "blocked_send timeout" << std::endl;
     return -3;
 }
-
-int get_sockfd_status(int sockfd){
-    int error;
-    socklen_t len = sizeof(error);
-    if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &error, &len) < 0) {
-        std::cout << ERROR << "Error getting socket options." << std::endl;
-        close(sockfd);
-        return 1;
-    }
-    if (error == 0) {
-        std::cout << "Socket is in good condition." << std::endl;
-    } else {
-        std::cout << "Socket error: " << strerror(error) << std::endl;
-    }
-    return 0;
-}

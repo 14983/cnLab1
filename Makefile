@@ -1,5 +1,5 @@
 CC=g++
-GTKFLAG=`pkg-config --cflags --libs gtk+-3.0` 
+GTKFLAG=-Wall `pkg-config --cflags --libs gtk+-3.0` 
 ENV=gnome-terminal --window --command
 
 main: client.out server.out

@@ -55,7 +55,8 @@ void handleClient(int comfd, ADDRESS clientAddr) {
                 time_t now = time(0);
                 std::string timeStr = ctime(&now);
                 MSG *response = create_message(MSG_TYPE_GET_TIME, timeStr);
-                send_message(comfd, response);
+                blocked_send(comfd, response);
+                std::this_thread::sleep_for(std::chrono::milliseconds(SYSTEM_SLEEP_TIME));
                 free(response);
                 {
                     std::lock_guard<std::mutex> lock(coutMutex);
@@ -108,14 +109,16 @@ void handleClient(int comfd, ADDRESS clientAddr) {
                 break;
             }
             case REQ_TYPE_SEND_MSG: {
-                uint32_t _toComfd;
+                int32_t _toComfd;
                 memcpy(&_toComfd, msg->data, COMFD_SIZE);
+                {
+                    std::lock_guard<std::mutex> lock(coutMutex);
+                    std::cout << "Send message to " << _toComfd << "  : "  << msg->data << std::endl;
+                }
                 std::lock_guard<std::mutex> lock(clientMutex);
                 bool _isSended = false;
                 for(auto &client: clients) {
-                    get_sockfd_status(client.comfd);
                     if(client.comfd == _toComfd) {
-                        // forward message to client
                         std::string _data = "";
                         _data.insert(0, msg->data + COMFD_SIZE, msg->size - COMFD_SIZE);
                         _data.insert(0, (char*)&client.clientAddr.port, PORT_SIZE);
@@ -123,26 +126,20 @@ void handleClient(int comfd, ADDRESS clientAddr) {
                         _data.insert(0, (char*)&ip, IP_SIZE);
                         _data.insert(0, (char*)&comfd, COMFD_SIZE);
                         MSG *forwardMsg = create_message(MSG_TYPE_RECV_MSG, _data);
-                        int ret = blocked_send(client.comfd, forwardMsg);
-                        free(forwardMsg);
-                        if (ret == -1){
-                            MSG *response = create_message(MSG_TYPE_SEND_MSG, "1"); // send failed
-                            send_message(comfd, response);
-                            free(response);
-                            {
-                                std::lock_guard<std::mutex> lock(coutMutex);
-                                std::cout << WARNING << "forward message failed" << std::endl;
-                            }
-                        } else {
-                            MSG *response = create_message(MSG_TYPE_SEND_MSG, "0"); // send success
-                            send_message(comfd, response);
-                            free(response);
-                            {
-                                std::lock_guard<std::mutex> lock(coutMutex);
-                                std::cout << INFO << "forward message success" << std::endl;
-                            }
+                        if(send_message(_toComfd, forwardMsg) == -2) {
+                            clients.erase(std::remove(clients.begin(), clients.end(), client), clients.end());
+                            close_socket(_toComfd);
+                            break;
                         }
+                        MSG *response = create_message(MSG_TYPE_SEND_MSG, 1, "0");
+                        send_message(comfd, response);
+                        free(response);
+                        free(forwardMsg);
                         _isSended = true;
+                        {
+                            std::lock_guard<std::mutex> lock(coutMutex);
+                            std::cout << "Send message to " << client.clientAddr.ip << ": " << client.clientAddr.port << std::endl;
+                        }
                         break;
                     }
                 }
@@ -155,6 +152,12 @@ void handleClient(int comfd, ADDRESS clientAddr) {
                         std::cout << "Client not found" << std::endl;
                     }
                 }
+                break;
+            }
+            default: {
+                std::lock_guard<std::mutex> lock(coutMutex);
+                std::cout << ERROR << "Unknown message type: " << msg->type << std::endl;
+                break;
             }
         }
     }

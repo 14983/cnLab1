@@ -33,6 +33,8 @@ int acceptNewConnection(int sockfd, int &comfd, ADDRESS &clientAddr) {
     if (comfd < 0) {
         return -1;
     }
+    int flags = fcntl(comfd, F_GETFL, 0);
+    fcntl(comfd, F_SETFL, flags | O_NONBLOCK);
     strcpy(clientAddr.ip, inet_ntoa(rawClientAddr.sin_addr));
     clientAddr.port = ntohs(rawClientAddr.sin_port);
     return 0;
