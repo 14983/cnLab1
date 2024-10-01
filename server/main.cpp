@@ -10,6 +10,12 @@ int sockfd;
 
 bool killServer = false;
 
+std::string getHostName() {
+    char hostname[1024];
+    gethostname(hostname, 1024);
+    return std::string(hostname);
+}
+
 void signalHandler(int signum) {
     {
         std::lock_guard<std::mutex> lock(coutMutex);
@@ -58,7 +64,7 @@ void handleClient(int comfd, ADDRESS clientAddr) {
                 break;
             }
             case REQ_TYPE_GET_NAME: {
-                MSG *response = create_message(MSG_TYPE_GET_NAME, "Bottlefish");
+                MSG *response = create_message(MSG_TYPE_GET_NAME, getHostName());
                 send_message(comfd, response);
                 free(response);
                 {
@@ -104,18 +110,11 @@ void handleClient(int comfd, ADDRESS clientAddr) {
             case REQ_TYPE_SEND_MSG: {
                 uint32_t _toComfd;
                 memcpy(&_toComfd, msg->data, COMFD_SIZE);
-                
-                {
-                    std::lock_guard<std::mutex> lock(coutMutex);
-                    std::cout << "Send message to " << _toComfd << "  : "  << msg->data << std::endl;
-                }
                 std::lock_guard<std::mutex> lock(clientMutex);
                 bool _isSended = false;
                 for(auto &client: clients) {
                     if(client.comfd == _toComfd) {
-                        MSG *response = create_message(MSG_TYPE_SEND_MSG, 1, "0");
-                        send_message(comfd, response);
-                        free(response);
+                        // forward message to client
                         std::string _data = "";
                         _data.insert(0, msg->data + COMFD_SIZE, msg->size - COMFD_SIZE);
                         _data.insert(0, (char*)&client.clientAddr.port, PORT_SIZE);
@@ -123,13 +122,26 @@ void handleClient(int comfd, ADDRESS clientAddr) {
                         _data.insert(0, (char*)&ip, IP_SIZE);
                         _data.insert(0, (char*)&comfd, COMFD_SIZE);
                         MSG *forwardMsg = create_message(MSG_TYPE_RECV_MSG, _data);
-                        send_message(client.comfd, forwardMsg);
+                        int ret = blocked_send(client.comfd, forwardMsg);
                         free(forwardMsg);
-                        _isSended = true;
-                        {
-                            std::lock_guard<std::mutex> lock(coutMutex);
-                            std::cout << "Send message to " << client.clientAddr.ip << ": " << client.clientAddr.port << std::endl;
+                        if (ret == -1){
+                            MSG *response = create_message(MSG_TYPE_SEND_MSG, "1"); // send failed
+                            send_message(comfd, response);
+                            free(response);
+                            {
+                                std::lock_guard<std::mutex> lock(coutMutex);
+                                std::cout << WARNING << "forward message failed" << std::endl;
+                            }
+                        } else {
+                            MSG *response = create_message(MSG_TYPE_SEND_MSG, "0"); // send success
+                            send_message(comfd, response);
+                            free(response);
+                            {
+                                std::lock_guard<std::mutex> lock(coutMutex);
+                                std::cout << INFO << "forward message success" << std::endl;
+                            }
                         }
+                        _isSended = true;
                         break;
                     }
                 }
@@ -140,14 +152,6 @@ void handleClient(int comfd, ADDRESS clientAddr) {
                     {
                         std::lock_guard<std::mutex> lock(coutMutex);
                         std::cout << "Client not found" << std::endl;
-                    }
-                } else {
-                    MSG *response = create_message(MSG_TYPE_SEND_MSG, "0");
-                    send_message(comfd, response);
-                    free(response);
-                    {
-                        std::lock_guard<std::mutex> lock(coutMutex);
-                        std::cout << "Send message success" << std::endl;
                     }
                 }
             }

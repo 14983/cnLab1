@@ -1,11 +1,17 @@
 #ifndef NOTIFY_H
 #define NOTIFY_H
 
-#define USE_NOTIFY_SEND
+#define USE_COUT
 
 #include <string>
 #include <cstdlib>
 #include <thread>
+
+#ifdef USE_COUT
+void notify(const std::string &message) {
+    std::cout << INFO << message << std::endl;
+}
+#endif
 
 #ifdef USE_NOTIFY_SEND
 void notify(const std::string &message) {

@@ -99,3 +99,17 @@ int send_message(int sockfd, const MSG *message) {
     }
     return 1;
 }
+
+int blocked_send(int sockfd, const MSG *msg){
+    for (int i = 0; i < TIMEOUT/USER_SLEEP_TIME; i++){
+        int ret = send_message(sockfd, msg);
+        if (ret <= 0) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(USER_SLEEP_TIME));
+            std::cout << INFO << "blocked_send retrying..." << std::endl;
+        } else {
+            return 0;
+        }
+    }
+    std::cout << ERROR << "blocked_send timeout" << std::endl;
+    return -1;
+}

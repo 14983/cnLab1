@@ -127,5 +127,6 @@ int send_message(int sockfd, const MSG *message);
 MSG *create_message(MSG_TYPE type); // the return value should be freed by the caller
 MSG *create_message(MSG_TYPE type, const std::string &data); // the return value should be freed by the caller
 MSG *create_message(MSG_TYPE type, size_t size, const char *data); // the return value should be freed by the caller
+int blocked_send(int sockfd, const MSG *message);
 
 #endif
