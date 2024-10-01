@@ -179,8 +179,9 @@ int main(int argc, char *argv[]) {
             MSG *msg = create_message(REQ_TYPE_END_CONN);
             int ret = blocked_send(sockfd, msg);
             free(msg);
-            if (ret < 0) continue;
-            std::cout << INFO << "sent MSG_TYPE_END_CONN" << std::endl;
+            if (ret < 0 && ret != -2) continue; // -2 means connection already closed
+            if (ret != -2)
+                std::cout << INFO << "sent MSG_TYPE_END_CONN" << std::endl;
             // wait for message handler thread to join
             message_handler_running = false;
             message_handler_thread.join();

@@ -78,17 +78,33 @@ int get_message(int sockfd, MSG *&msg) { // the return value should be freed by 
 
 int send_message(int sockfd, const MSG *message) {
     // note: send() will **not** be blocked.
-    // return value: 1 for success, negative for error
+    // return value: 1  for success
+    //               -1 for unknown error
+    //               -2 for socket closed
+    //               -3 for send error
+
+    // call recv() to check if the socket is still alive
+    char tmp_buf[1024];
+    int ret = recv(sockfd, tmp_buf, sizeof(tmp_buf), MSG_PEEK);
+    if (ret < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+        std::cout << ERROR << "send_message: recv() error: " << strerror(errno) << std::endl;
+        return -1;
+    } else if (ret == 0) {
+        std::cout << ERROR << "send_message: socket is closed" << std::endl;
+        return -2;
+    }
+
+    // send the message
     char *serialized_message = (char *)message;
     size_t message_size = sizeof(MSG) + message -> size;
     int nLeft = message_size;
-    int ret = 0;
+    ret = 0;
     bool is_header_sent = false;
     while (nLeft > 0) {
         ret = send(sockfd, serialized_message, nLeft, 0);
         if (ret <= 0) {
             if (!is_header_sent){
-                return ret;
+                return -3;
             } else {
                 std::this_thread::sleep_for(std::chrono::milliseconds(SYSTEM_SLEEP_TIME));
             }
@@ -103,13 +119,31 @@ int send_message(int sockfd, const MSG *message) {
 int blocked_send(int sockfd, const MSG *msg){
     for (int i = 0; i < TIMEOUT/USER_SLEEP_TIME; i++){
         int ret = send_message(sockfd, msg);
-        if (ret <= 0) {
+        if (ret == -3) {
             std::this_thread::sleep_for(std::chrono::milliseconds(USER_SLEEP_TIME));
             std::cout << INFO << "blocked_send retrying..." << std::endl;
+        } else if (ret == -1 || ret == -2) {
+            return ret;
         } else {
             return 0;
         }
     }
     std::cout << ERROR << "blocked_send timeout" << std::endl;
-    return -1;
+    return -3;
+}
+
+int get_sockfd_status(int sockfd){
+    int error;
+    socklen_t len = sizeof(error);
+    if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &error, &len) < 0) {
+        std::cout << ERROR << "Error getting socket options." << std::endl;
+        close(sockfd);
+        return 1;
+    }
+    if (error == 0) {
+        std::cout << "Socket is in good condition." << std::endl;
+    } else {
+        std::cout << "Socket error: " << strerror(error) << std::endl;
+    }
+    return 0;
 }
