@@ -160,6 +160,7 @@ void handleClient(int comfd, ADDRESS clientAddr) {
                 break;
             }
         }
+        free(msg);
     }
     {
         std::lock_guard<std::mutex> lock(coutMutex);
