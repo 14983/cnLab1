@@ -56,7 +56,6 @@ void handleClient(int comfd, ADDRESS clientAddr) {
                 std::string timeStr = ctime(&now);
                 MSG *response = create_message(MSG_TYPE_GET_TIME, timeStr);
                 blocked_send(comfd, response);
-                std::this_thread::sleep_for(std::chrono::milliseconds(SYSTEM_SLEEP_TIME));
                 free(response);
                 {
                     std::lock_guard<std::mutex> lock(coutMutex);
@@ -121,8 +120,8 @@ void handleClient(int comfd, ADDRESS clientAddr) {
                     if(client.comfd == _toComfd) {
                         std::string _data = "";
                         _data.insert(0, msg->data + COMFD_SIZE, msg->size - COMFD_SIZE);
-                        _data.insert(0, (char*)&client.clientAddr.port, PORT_SIZE);
-                        uint32_t ip = inet_addr(client.clientAddr.ip);
+                        _data.insert(0, (char*)&clientAddr.port, PORT_SIZE);
+                        uint32_t ip = inet_addr(clientAddr.ip);
                         _data.insert(0, (char*)&ip, IP_SIZE);
                         _data.insert(0, (char*)&comfd, COMFD_SIZE);
                         MSG *forwardMsg = create_message(MSG_TYPE_RECV_MSG, _data);

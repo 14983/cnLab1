@@ -122,7 +122,7 @@ void notify_sender(void){
                     break;
             }
         } else if (msg->type == MSG_TYPE_RECV_MSG){
-            std::string notify_str = "\'" + std::string((char *)msg->data + 12) + "\' from " + std::string(inet_ntoa(*(in_addr *)((char *)msg->data+4))) + ":" + std::to_string(*(int *)((char *)msg->data + 8));
+            std::string notify_str = "\'" + std::string((char *)msg->data + 12) + "\' from " + std::string(inet_ntoa(*(in_addr *)((char *)msg->data+4))) + ":" + std::to_string(*(int *)((char *)msg->data + 8)) + ", comfd = " + std::to_string(*(int *)((char *)msg->data));
             notify(notify_str);
         } else {
             notify("unsupported message type: " + std::to_string(msg->type));
@@ -214,6 +214,7 @@ int main(int argc, char *argv[]) {
                 free(msg);
                 if (ret < 0) continue;
                 std::cout << INFO << "sent REQ_TYPE_GET_TIME" << std::endl;
+                std::this_thread::sleep_for(std::chrono::milliseconds(SYSTEM_SLEEP_TIME));
             }
         } else if (command == "4") {
             // check if connected
